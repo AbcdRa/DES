@@ -101,6 +101,37 @@ class DES
         return Convert.ToBase64String(BitArrayExtension.JoinBitArrays(cryptBlocks, 64).ToBytes());
     }
 
+    //Режим сцепления блоков шифротекста с распространение ошибки
+    public static string Encrypt_PCBC(string data, DESKey key, BitArray IV)
+    {
+        if (data.Length % 8 != 0) for (; data.Length % 8 != 0;) data += " ";
+        BitArray bdata = BitArrayExtension.GetFromString(data, "S");
+        BitArray[] blocks = bdata.Separate(64);
+        BitArray[] cryptBlocks = new BitArray[blocks.Length];
+        for (int i = 0; i < blocks.Length; i++)
+        {
+            BitArray block = (BitArray) blocks[i].Clone();
+            cryptBlocks[i] = Encrypt(block.Xor(IV), key);
+            IV = blocks[i].Xor(cryptBlocks[i]);
+        }
+        return Convert.ToBase64String(BitArrayExtension.JoinBitArrays(cryptBlocks, 64).ToBytes());
+    }
+
+    public static string Decrypt_PCBC(string data, DESKey key, BitArray IV)
+    {
+        byte[] bytes = Convert.FromBase64String(data);
+        BitArray bdata = new BitArray(bytes);
+        BitArray[] blocks = bdata.Separate(64);
+        string crypt = "";
+        for (int i = 0; i < blocks.Length; i++)
+        {
+            BitArray plain =  Decrypt(blocks[i], key).Xor(IV);
+            IV = blocks[i].Xor(plain);
+            crypt += plain.ToString("S");
+        }
+        return crypt;
+    }
+
     public static string Decrypt_ECB(string data, DESKey key)
     {
         byte[] bytes = Convert.FromBase64String(data);
